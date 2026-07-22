@@ -57,6 +57,8 @@ The notebook first profiles simple candidates together, screens combinations wit
 
 When `use_ai_interpretation=true`, the notebook also creates `final_bk_df`.
 
+The Azure Databricks DDL response schema wraps the recommendation in one required top-level field named `bk_recommendation`. The notebook flattens that nested field into the columns documented below.
+
 | Column | Type | Description | Example |
 |---|---|---|---|
 | `analysis_id` | string/UUID | Links the AI recommendation to the profiling execution. | `56d681da-36d5-4e18-99f6-012ab50df17c` |
