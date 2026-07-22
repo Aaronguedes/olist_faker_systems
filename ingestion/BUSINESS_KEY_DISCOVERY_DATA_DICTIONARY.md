@@ -43,3 +43,13 @@ If a perfectly unique smaller key exists, combinations containing it are removed
 
 Set the `persist_results` widget to `true` to append results to the Delta table configured by `results_table`. The default is `lakehouse.metadata.business_key_candidates`.
 
+## Performance controls
+
+| Widget | Description | Default | Example |
+|---|---|---:|---|
+| `combination_candidate_limit` | Maximum number of promising columns allowed into composite-key generation. This prevents combinatorial growth on wide tables. | `12` | With 30 eligible columns, only the 12 strongest are combined. |
+| `aggregation_batch_size` | Number of candidates profiled together in one Spark aggregation. | `50` | 120 candidates are processed in three aggregation batches instead of 120 separate scans. |
+| `approx_rsd` | Relative standard deviation used by `approx_count_distinct` during inexpensive candidate screening. Exact counts still confirm every finalist. | `0.01` | Approximately 1% relative standard deviation. |
+
+The notebook first profiles simple candidates together, screens combinations with approximate cardinality, confirms shortlisted candidates with exact counts, and calculates snapshot stability only for finalists. Approximate values are never published as final metrics.
+
