@@ -425,8 +425,9 @@ Table: """),
 
     endpoint_literal = "'" + ai_model_endpoint.replace("'", "''") + "'"
     ai_response_format = (
-        "STRUCT<recommended_columns:ARRAY<STRING>,decision:STRING,"
-        "confidence:STRING,explanation:STRING,warnings:ARRAY<STRING>>"
+        "STRUCT<bk_recommendation:STRUCT<recommended_columns:ARRAY<STRING>,"
+        "decision:STRING,confidence:STRING,explanation:STRING,"
+        "warnings:ARRAY<STRING>>>"
     )
 
     ai_scored_df = ai_input_df.withColumn(
@@ -448,11 +449,11 @@ Table: """),
             F.lit(analysis_id).alias("analysis_id"),
             F.lit(analyzed_at).alias("analyzed_at"),
             "catalog", "schema", "table",
-            F.col("ai_query_result.response.recommended_columns").alias("recommended_bk"),
-            F.col("ai_query_result.response.decision").alias("ai_decision"),
-            F.col("ai_query_result.response.confidence").alias("confidence"),
-            F.col("ai_query_result.response.explanation").alias("explanation"),
-            F.col("ai_query_result.response.warnings").alias("warnings"),
+            F.col("ai_query_result.response.bk_recommendation.recommended_columns").alias("recommended_bk"),
+            F.col("ai_query_result.response.bk_recommendation.decision").alias("ai_decision"),
+            F.col("ai_query_result.response.bk_recommendation.confidence").alias("confidence"),
+            F.col("ai_query_result.response.bk_recommendation.explanation").alias("explanation"),
+            F.col("ai_query_result.response.bk_recommendation.warnings").alias("warnings"),
             F.col("ai_query_result.errorMessage").alias("ai_error"),
         )
         .withColumn(

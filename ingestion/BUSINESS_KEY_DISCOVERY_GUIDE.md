@@ -347,6 +347,20 @@ Quando `use_ai_interpretation=true`, o notebook agrupa todas as candidatas de um
 
 O prompt instrui o modelo a favorecer identificadores locais, rejeitar atributos mutáveis, não inventar colunas e retornar `NEEDS_REVIEW` quando não houver candidata adequada.
 
+O `responseFormat` usa um único campo no nível superior, conforme exigido pelo formato DDL do Azure Databricks:
+
+```text
+STRUCT<bk_recommendation:STRUCT<
+  recommended_columns:ARRAY<STRING>,
+  decision:STRING,
+  confidence:STRING,
+  explanation:STRING,
+  warnings:ARRAY<STRING>
+>>
+```
+
+Com `failOnError=false`, os valores são acessados abaixo de `ai_query_result.response.bk_recommendation`, enquanto erros do endpoint ficam em `ai_query_result.errorMessage`.
+
 A saída final é `final_bk_df`:
 
 | Coluna | Exemplo | Finalidade |
