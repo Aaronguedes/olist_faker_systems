@@ -50,6 +50,21 @@ Simula novos dias de operação a partir do estado anterior:
 - geração de incrementais contendo apenas registros modificados;
 - persistência do estado para a próxima execução.
 
+### `03_bronze_autoloader`
+
+Ingere todas as entidades da landing para tabelas Delta na camada Bronze:
+
+- utiliza Databricks Auto Loader com `cloudFiles` e formato Parquet;
+- mantém schema location e checkpoint independentes por entidade;
+- suporta evolução aditiva de schema e `_rescued_data`;
+- adiciona metadados de arquivo, sistema, entidade, data de origem e ingestão;
+- usa `availableNow=True`, adequado para execução recorrente em Workflows;
+- grava as tabelas em `<bronze_catalog>.<bronze_schema>`.
+
+Tabelas produzidas: `crm_customers`, `erp_customers`, `erp_orders`,
+`erp_payments`, `ecommerce_customers`, `ecommerce_products`,
+`ecommerce_sellers` e `loyalty_customers`.
+
 ## Dicionário de dados
 
 Tipos são apresentados como tipos lógicos recomendados. Como os notebooks usam inferência de schema entre Pandas e Spark, o tipo físico pode variar conforme os valores presentes.
