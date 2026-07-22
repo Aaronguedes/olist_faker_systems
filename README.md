@@ -1,8 +1,8 @@
 # Olist Faker Systems
 
-Projeto de engenharia de dados que utiliza o dataset pÃºblico Olist como referÃªncia para gerar dados sintÃ©ticos de clientes em mÃºltiplos sistemas empresariais. O objetivo Ã© criar uma fonte realista para estudos de ingestÃ£o incremental, qualidade de dados, integraÃ§Ã£o de identidades e modelagem Data Vault em Databricks.
+Projeto de engenharia de dados que utiliza o dataset público Olist como referência para gerar dados sintéticos de clientes em múltiplos sistemas empresariais. O objetivo é criar uma fonte realista para estudos de ingestão incremental, qualidade de dados, integração de identidades e modelagem Data Vault em Databricks.
 
-Os mesmos clientes recebem representaÃ§Ãµes diferentes em CRM, ERP, e-commerce e fidelidade. Isso permite testar resoluÃ§Ã£o de identidade, historizaÃ§Ã£o, regras de negÃ³cio e relacionamentos entre fontes independentes.
+Os mesmos clientes recebem representações diferentes em CRM, ERP, e-commerce e fidelidade. Isso permite testar resolução de identidade, historização, regras de negócio e relacionamentos entre fontes independentes.
 
 ## Fluxo do projeto
 
@@ -30,45 +30,45 @@ Bronze -> Raw Vault -> Business Vault -> Gold
 
 Cria a carga inicial completa:
 
-- lÃª clientes, pedidos, pagamentos, produtos e vendedores do Olist;
-- gera o perfil mestre canÃ´nico;
-- cria identificadores prÃ³prios para cada sistema de origem;
-- produz atributos sintÃ©ticos com Faker;
-- calcula mÃ©tricas de compra;
-- injeta variaÃ§Ãµes de formato e problemas controlados de qualidade;
+- lê clientes, pedidos, pagamentos, produtos e vendedores do Olist;
+- gera o perfil mestre canônico;
+- cria identificadores próprios para cada sistema de origem;
+- produz atributos sintéticos com Faker;
+- calcula métricas de compra;
+- injeta variações de formato e problemas controlados de qualidade;
 - grava snapshots Parquet na landing zone.
 
 ### `02_simulate_incremental_loads`
 
-Simula novos dias de operaÃ§Ã£o a partir do estado anterior:
+Simula novos dias de operação a partir do estado anterior:
 
 - novos clientes;
-- mudanÃ§as de telefone, e-mail e endereÃ§o;
+- mudanças de telefone, e-mail e endereço;
 - novos pedidos e pagamentos;
-- logins e alteraÃ§Ãµes de dispositivo;
-- resgate e recÃ¡lculo de pontos;
-- geraÃ§Ã£o de incrementais contendo apenas registros modificados;
-- persistÃªncia do estado para a prÃ³xima execuÃ§Ã£o.
+- logins e alterações de dispositivo;
+- resgate e recálculo de pontos;
+- geração de incrementais contendo apenas registros modificados;
+- persistência do estado para a próxima execução.
 
-## DicionÃ¡rio de dados
+## Dicionário de dados
 
-Tipos sÃ£o apresentados como tipos lÃ³gicos recomendados. Como os notebooks usam inferÃªncia de schema entre Pandas e Spark, o tipo fÃ­sico pode variar conforme os valores presentes.
+Tipos são apresentados como tipos lógicos recomendados. Como os notebooks usam inferência de schema entre Pandas e Spark, o tipo físico pode variar conforme os valores presentes.
 
 ### Master Profile
 
-**GrÃ£o:** um registro por cliente canÃ´nico.
+**Grão:** um registro por cliente canônico.
 
-| Campo | Tipo | Chave | DescriÃ§Ã£o |
+| Campo | Tipo | Chave | Descrição |
 |---|---|---|---|
 | `global_customer_id` | string/UUID | PK | Identificador global do cliente. |
 | `customer_unique_id` | string | BK | Identificador Olist usado para correlacionar os sistemas. |
-| `first_name` | string |  | Primeiro nome sintÃ©tico. |
+| `first_name` | string |  | Primeiro nome sintético. |
 | `middle_name` | string |  | Nome do meio opcional. |
-| `last_name` | string |  | Sobrenome sintÃ©tico. |
+| `last_name` | string |  | Sobrenome sintético. |
 | `full_name` | string |  | Nome completo. |
 | `birth_date` | date |  | Data de nascimento. |
-| `gender` | string |  | GÃªnero sintÃ©tico. |
-| `cpf` | string |  | CPF sintÃ©tico. |
+| `gender` | string |  | Gênero sintético. |
+| `cpf` | string |  | CPF sintético. |
 | `personal_email` | string |  | E-mail pessoal. |
 | `phone` | string |  | Telefone celular. |
 | `street` | string |  | Logradouro. |
@@ -82,18 +82,18 @@ Tipos sÃ£o apresentados como tipos lÃ³gicos recomendados. Como os notebooks 
 
 ### CRM Customers
 
-**GrÃ£o:** um registro por cliente no CRM.  
+**Grão:** um registro por cliente no CRM.  
 **Chaves:** `crm_customer_id` (PK), `customer_unique_id` (BK).
 
-| Grupo | Campos | DescriÃ§Ã£o |
+| Grupo | Campos | Descrição |
 |---|---|---|
-| IdentificaÃ§Ã£o | `crm_customer_id`, `customer_unique_id`, `cpf` | Identificadores do CRM, chave de integraÃ§Ã£o e documento. |
-| Nome | `first_name`, `middle_name`, `last_name`, `full_name` | Componentes e apresentaÃ§Ã£o do nome. |
-| Perfil | `birth_date`, `gender`, `marital_status`, `profession`, `annual_income` | InformaÃ§Ãµes demogrÃ¡ficas e profissionais. |
-| Contato | `email`, `phone`, `street`, `city`, `state` | Dados sujeitos a mudanÃ§as e problemas de qualidade. |
-| GestÃ£o | `status`, `risk_score`, `created_at`, `updated_at` | Estado, risco e datas do registro. |
+| Identificação | `crm_customer_id`, `customer_unique_id`, `cpf` | Identificadores do CRM, chave de integração e documento. |
+| Nome | `first_name`, `middle_name`, `last_name`, `full_name` | Componentes e apresentação do nome. |
+| Perfil | `birth_date`, `gender`, `marital_status`, `profession`, `annual_income` | Informações demográficas e profissionais. |
+| Contato | `email`, `phone`, `street`, `city`, `state` | Dados sujeitos a mudanças e problemas de qualidade. |
+| Gestão | `status`, `risk_score`, `created_at`, `updated_at` | Estado, risco e datas do registro. |
 
-DomÃ­nios principais:
+Domínios principais:
 
 - `status`: `ACTIVE`, `INACTIVE`, `PROSPECT`;
 - `risk_score`: 0 a 100;
@@ -101,126 +101,126 @@ DomÃ­nios principais:
 
 ### ERP Customers
 
-**GrÃ£o:** um registro por cliente no ERP.  
+**Grão:** um registro por cliente no ERP.  
 **Chaves:** `erp_customer_id` (PK), `customer_unique_id` (BK).
 
-| Campo | Tipo | DescriÃ§Ã£o |
+| Campo | Tipo | Descrição |
 |---|---|---|
 | `erp_customer_id` | string | Identificador do cliente no ERP. |
-| `customer_unique_id` | string | Chave de correlaÃ§Ã£o entre sistemas. |
-| `customer_name` | string | Nome com possÃ­vel variaÃ§Ã£o de apresentaÃ§Ã£o. |
-| `cpf` | string | CPF sintÃ©tico. |
+| `customer_unique_id` | string | Chave de correlação entre sistemas. |
+| `customer_name` | string | Nome com possível variação de apresentação. |
+| `cpf` | string | CPF sintético. |
 | `tax_category` | string | `Normal`, `Simples` ou `MEI`. |
 | `customer_group` | string | `Retail`, `SMB`, `Corporate` ou `Government`. |
 | `payment_terms` | string | `NET15`, `NET30`, `NET45` ou `NET60`. |
-| `credit_limit` | decimal(18,2) | Limite de crÃ©dito calculado/atribuÃ­do. |
-| `account_manager` | string | Gerente responsÃ¡vel. |
+| `credit_limit` | decimal(18,2) | Limite de crédito calculado/atribuído. |
+| `account_manager` | string | Gerente responsável. |
 | `invoice_email` | string | E-mail de faturamento. |
 | `total_orders` | integer | Quantidade acumulada de pedidos. |
 | `first_purchase` | timestamp | Primeira compra. |
 | `last_purchase` | timestamp | Compra mais recente. |
 | `total_spent` | decimal(18,2) | Valor total gasto. |
-| `average_ticket` | decimal(18,2) | Valor mÃ©dio por pedido. |
+| `average_ticket` | decimal(18,2) | Valor médio por pedido. |
 
 ### ERP Orders
 
-**GrÃ£o:** um registro por pedido.  
+**Grão:** um registro por pedido.  
 **Chave:** `order_id` (PK).
 
-| Campo | Tipo | DescriÃ§Ã£o |
+| Campo | Tipo | Descrição |
 |---|---|---|
 | `order_id` | string/UUID | Identificador do pedido. |
 | `customer_id` | string | Identificador Olist presente no snapshot inicial. |
 | `customer_unique_id` | string | Chave do cliente usada no incremental. |
 | `order_status` | string | Status do pedido. |
 | `order_purchase_timestamp` | timestamp | Data/hora da compra. |
-| `order_approved_at` | timestamp | AprovaÃ§Ã£o; presente no snapshot Olist. |
-| `order_delivered_carrier_date` | timestamp | Entrega Ã  transportadora. |
+| `order_approved_at` | timestamp | Aprovação; presente no snapshot Olist. |
+| `order_delivered_carrier_date` | timestamp | Entrega à transportadora. |
 | `order_delivered_customer_date` | timestamp | Entrega ao cliente. |
-| `order_estimated_delivery_date` | timestamp | PrevisÃ£o de entrega. |
+| `order_estimated_delivery_date` | timestamp | Previsão de entrega. |
 
 ### ERP Payments
 
-**GrÃ£o:** um registro por ocorrÃªncia de pagamento.  
+**Grão:** um registro por ocorrência de pagamento.  
 **Relacionamento:** `order_id` referencia ERP Orders.
 
-| Campo | Tipo | DescriÃ§Ã£o |
+| Campo | Tipo | Descrição |
 |---|---|---|
 | `payment_id` | string/UUID | Identificador criado para pagamentos incrementais. |
 | `order_id` | string/UUID | Pedido relacionado. |
-| `payment_sequential` | integer | SequÃªncia do pagamento no snapshot Olist. |
+| `payment_sequential` | integer | Sequência do pagamento no snapshot Olist. |
 | `payment_type` | string | Meio de pagamento. |
 | `payment_installments` | integer | Quantidade de parcelas. |
 | `payment_value` | decimal(18,2) | Valor pago. |
 
 ### Ecommerce Customers
 
-**GrÃ£o:** uma conta por cliente.  
+**Grão:** uma conta por cliente.  
 **Chaves:** `ecommerce_customer_id` (PK), `customer_unique_id` (BK).
 
-| Grupo | Campos | DescriÃ§Ã£o |
+| Grupo | Campos | Descrição |
 |---|---|---|
-| Identidade | `ecommerce_customer_id`, `customer_unique_id`, `username`, `display_name` | Conta e identificaÃ§Ã£o do cliente. |
+| Identidade | `ecommerce_customer_id`, `customer_unique_id`, `username`, `display_name` | Conta e identificação do cliente. |
 | Contato | `email_address`, `phone_number` | Dados de contato na plataforma. |
 | Tecnologia | `browser`, `operating_system`, `device`, `last_login` | Contexto de acesso mais recente. |
-| PreferÃªncias | `marketing_source`, `preferred_language`, `newsletter_optin`, `preferred_category` | AquisiÃ§Ã£o, consentimento e preferÃªncias. |
+| Preferências | `marketing_source`, `preferred_language`, `newsletter_optin`, `preferred_category` | Aquisição, consentimento e preferências. |
 | Comportamento | `wishlist_items`, `abandoned_carts`, `account_created` | Indicadores de uso da conta. |
 
 ### Ecommerce Products
 
-**GrÃ£o:** um registro por produto.  
+**Grão:** um registro por produto.  
 **Chave:** `product_id` (PK).
 
-| Grupo | Campos | DescriÃ§Ã£o |
+| Grupo | Campos | Descrição |
 |---|---|---|
-| IdentificaÃ§Ã£o | `product_id`, `product_category_name` | Produto e categoria Olist. |
-| ConteÃºdo | `product_name_lenght`, `product_description_lenght`, `product_photos_qty` | Metadados do catÃ¡logo original. |
-| DimensÃµes | `product_weight_g`, `product_length_cm`, `product_height_cm`, `product_width_cm` | Peso e dimensÃµes fÃ­sicas. |
-| Enriquecimento | `brand`, `supplier_code`, `is_active`, `launch_year` | Atributos sintÃ©ticos adicionados pelo projeto. |
+| Identificação | `product_id`, `product_category_name` | Produto e categoria Olist. |
+| Conteúdo | `product_name_lenght`, `product_description_lenght`, `product_photos_qty` | Metadados do catálogo original. |
+| Dimensões | `product_weight_g`, `product_length_cm`, `product_height_cm`, `product_width_cm` | Peso e dimensões físicas. |
+| Enriquecimento | `brand`, `supplier_code`, `is_active`, `launch_year` | Atributos sintéticos adicionados pelo projeto. |
 
 ### Ecommerce Sellers
 
-**GrÃ£o:** um registro por vendedor.  
+**Grão:** um registro por vendedor.  
 **Chave:** `seller_id` (PK).
 
-| Campo | Tipo | DescriÃ§Ã£o |
+| Campo | Tipo | Descrição |
 |---|---|---|
 | `seller_id` | string | Identificador Olist do vendedor. |
 | `seller_zip_code_prefix` | string/integer | Prefixo do CEP. |
 | `seller_city` | string | Cidade. |
 | `seller_state` | string | UF. |
-| `seller_rating` | decimal(3,2) | Nota sintÃ©tica entre 3,5 e 5,0. |
+| `seller_rating` | decimal(3,2) | Nota sintética entre 3,5 e 5,0. |
 | `premium_partner` | boolean | Indicador de parceiro premium. |
-| `account_manager` | string | Gerente responsÃ¡vel. |
+| `account_manager` | string | Gerente responsável. |
 
 ### Loyalty Customers
 
-**GrÃ£o:** uma associaÃ§Ã£o por cliente.  
+**Grão:** uma associação por cliente.  
 **Chaves:** `loyalty_customer_id` (PK), `customer_unique_id` (BK).
 
-| Campo | Tipo | DescriÃ§Ã£o |
+| Campo | Tipo | Descrição |
 |---|---|---|
 | `loyalty_customer_id` | string | Identificador no programa. |
-| `customer_unique_id` | string | Chave de correlaÃ§Ã£o entre sistemas. |
+| `customer_unique_id` | string | Chave de correlação entre sistemas. |
 | `member_name` | string | Nome apresentado no programa. |
-| `join_date` | date/timestamp | Data de adesÃ£o. |
+| `join_date` | date/timestamp | Data de adesão. |
 | `points` | integer | Pontos acumulados. |
-| `redeemed_points` | integer | Pontos jÃ¡ resgatados. |
-| `available_points` | integer | Pontos disponÃ­veis. |
+| `redeemed_points` | integer | Pontos já resgatados. |
+| `available_points` | integer | Pontos disponíveis. |
 | `tier` | string | `Bronze`, `Silver`, `Gold` ou `Platinum`. |
 | `wallet_balance` | decimal(18,2) | Saldo equivalente aos pontos. |
 | `preferred_store` | string | Loja preferencial. |
-| `last_campaign` | string | Ãšltima campanha atribuÃ­da. |
-| `active_member` | boolean | Indica associaÃ§Ã£o ativa. |
+| `last_campaign` | string | Última campanha atribuída. |
+| `active_member` | boolean | Indica associação ativa. |
 
 ### Simulation Control
 
-**GrÃ£o:** um registro por execuÃ§Ã£o da simulaÃ§Ã£o.
+**Grão:** um registro por execução da simulação.
 
-| Campo | Tipo | DescriÃ§Ã£o |
+| Campo | Tipo | Descrição |
 |---|---|---|
-| `last_execution` | timestamp | Data processada pela execuÃ§Ã£o atual. |
-| `next_execution` | timestamp | PrÃ³xima data prevista. |
+| `last_execution` | timestamp | Data processada pela execução atual. |
+| `next_execution` | timestamp | Próxima data prevista. |
 | `crm_records` | integer | Total de registros no estado do CRM. |
 | `erp_records` | integer | Total de registros no estado do ERP. |
 | `web_records` | integer | Total de contas no estado do e-commerce. |
@@ -231,8 +231,8 @@ DomÃ­nios principais:
 ## Snapshot, incremental e estado
 
 - A carga inicial grava snapshots completos na landing.
-- O Notebook 2 grava apenas clientes alterados e novas transaÃ§Ãµes na partiÃ§Ã£o diÃ¡ria.
-- O diretÃ³rio de estado mantÃ©m a visÃ£o completa apÃ³s a aplicaÃ§Ã£o dos eventos e nÃ£o deve ser confundido com a landing consumida pelo pipeline.
-- `customer_unique_id` Ã© a principal Business Key para integraÃ§Ã£o e modelagem Data Vault.
+- O Notebook 2 grava apenas clientes alterados e novas transações na partição diária.
+- O diretório de estado mantém a visão completa após a aplicação dos eventos e não deve ser confundido com a landing consumida pelo pipeline.
+- `customer_unique_id` é a principal Business Key para integração e modelagem Data Vault.
 
-Para uma ingestÃ£o mais robusta, recomenda-se adicionar a todos os datasets os metadados `load_datetime`, `record_source`, `batch_id` e `operation_type` (`I`, `U`, `D`). TambÃ©m Ã© recomendÃ¡vel alinhar explicitamente os schemas de Orders, Payments e novos clientes entre snapshot e incremental.
+Para uma ingestão mais robusta, recomenda-se adicionar a todos os datasets os metadados `load_datetime`, `record_source`, `batch_id` e `operation_type` (`I`, `U`, `D`). Também é recomendável alinhar explicitamente os schemas de Orders, Payments e novos clientes entre snapshot e incremental.
