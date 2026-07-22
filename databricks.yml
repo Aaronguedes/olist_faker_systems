@@ -7,12 +7,13 @@ include:
 variables:
   existing_cluster_id:
     description: Existing Databricks cluster used by the Bronze ingestion tasks.
+    default: 0721-212601-o84tf2qq
   landing_root:
     default: abfss://landing@stglkhdev.dfs.core.windows.net/vault
   checkpoint_root:
     default: abfss://landing@stglkhdev.dfs.core.windows.net/vault/_checkpoints/bronze
   bronze_catalog:
-    default: poc
+    default: lakehouse
   bronze_schema:
     default: bronze
 

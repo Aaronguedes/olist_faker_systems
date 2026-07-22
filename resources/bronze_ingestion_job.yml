@@ -19,7 +19,7 @@ resources:
         - task_key: crm_customers
           existing_cluster_id: ${var.existing_cluster_id}
           notebook_task: &bronze_notebook
-            notebook_path: ${workspace.file_path}/ingestion/03_bronze_autoloader_base.py
+            notebook_path: ../ingestion/03_bronze_autoloader_base.py
             base_parameters: &common_parameters
               source_system: crm
               entity: customers

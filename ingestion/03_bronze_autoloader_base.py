@@ -24,7 +24,7 @@ DEFAULTS = {
     "checkpoint_root": "abfss://landing@stglkhdev.dfs.core.windows.net/vault/_checkpoints/bronze",
     "bronze_catalog": "poc",
     "bronze_schema": "bronze",
-    "include_existing_files": "true",
+    "include_existing_files": "false",
 }
 
 for name, default in DEFAULTS.items():
