@@ -1,0 +1,31 @@
+bundle:
+  name: olist-faker-systems
+
+include:
+  - resources/*.yml
+
+variables:
+  existing_cluster_id:
+    description: Existing Databricks cluster used by the Bronze ingestion tasks.
+  landing_root:
+    default: abfss://landing@stglkhdev.dfs.core.windows.net/vault
+  checkpoint_root:
+    default: abfss://landing@stglkhdev.dfs.core.windows.net/vault/_checkpoints/bronze
+  bronze_catalog:
+    default: poc
+  bronze_schema:
+    default: bronze
+
+workspace:
+  root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+
+targets:
+  dev:
+    default: true
+    mode: development
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+
+
