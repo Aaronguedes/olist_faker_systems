@@ -1,6 +1,7 @@
 # Databricks notebook source
 from datetime import datetime, timezone
 from itertools import combinations
+import re
 from uuid import uuid4
 
 from pyspark.sql import functions as F
@@ -22,6 +23,10 @@ DEFAULTS = {
     "latest_snapshot_only": "true",
     "persist_results": "false",
     "results_table": "lakehouse.metadata.business_key_candidates",
+    "use_ai_interpretation": "true",
+    "ai_model_endpoint": "databricks-gpt-5-mini",
+    "persist_ai_results": "false",
+    "ai_results_table": "lakehouse.metadata.business_key_recommendations",
 }
 
 for widget_name, default_value in DEFAULTS.items():
@@ -39,6 +44,10 @@ approx_rsd = float(dbutils.widgets.get("approx_rsd"))
 latest_snapshot_only = dbutils.widgets.get("latest_snapshot_only").strip().lower() == "true"
 persist_results = dbutils.widgets.get("persist_results").strip().lower() == "true"
 results_table = dbutils.widgets.get("results_table").strip()
+use_ai_interpretation = dbutils.widgets.get("use_ai_interpretation").strip().lower() == "true"
+ai_model_endpoint = dbutils.widgets.get("ai_model_endpoint").strip()
+persist_ai_results = dbutils.widgets.get("persist_ai_results").strip().lower() == "true"
+ai_results_table = dbutils.widgets.get("ai_results_table").strip()
 
 if max_columns not in (1, 2, 3):
     raise ValueError("max_columns must be 1, 2, or 3")
@@ -50,6 +59,8 @@ if combination_candidate_limit < 2 or aggregation_batch_size < 1:
     raise ValueError("combination_candidate_limit must be at least 2 and aggregation_batch_size at least 1")
 if not 0 < approx_rsd <= 0.1:
     raise ValueError("approx_rsd must be greater than 0 and at most 0.1")
+if not re.fullmatch(r"[A-Za-z0-9_.:-]+", ai_model_endpoint):
+    raise ValueError("ai_model_endpoint contains unsupported characters")
 
 
 # COMMAND ----------
@@ -309,6 +320,7 @@ def discover_business_keys(
 analysis_id = str(uuid4())
 analyzed_at = datetime.now(timezone.utc)
 all_results = []
+result_df = None
 
 for table in tables:
     full_table_name = ".".join(quote_identifier(part) for part in (catalog, schema, table))
@@ -348,4 +360,135 @@ if all_results:
         print(f"Candidates appended to {results_table}")
 else:
     print("No candidates met the configured thresholds.")
+
+
+# COMMAND ----------
+
+# AI interpretation sends only candidate metadata. Source values and PII are
+# never included in the prompt. One request is made per table, not per row.
+if use_ai_interpretation:
+    candidate_fields = [
+        "columns", "key_size", "classification", "score", "uniqueness_ratio",
+        "null_rows", "snapshot_count", "stability_ratio", "reason",
+    ]
+
+    if result_df is not None:
+        candidates_by_table = (
+            result_df
+            .groupBy("catalog", "schema", "table")
+            .agg(
+                F.to_json(
+                    F.collect_list(F.struct(*[F.col(name) for name in candidate_fields]))
+                ).alias("candidates_json")
+            )
+        )
+    else:
+        candidates_by_table = spark.createDataFrame(
+            [], "catalog STRING, schema STRING, table STRING, candidates_json STRING"
+        )
+
+    expected_tables_df = (
+        spark.createDataFrame([(table,) for table in tables], "table STRING")
+        .withColumn("catalog", F.lit(catalog))
+        .withColumn("schema", F.lit(schema))
+    )
+
+    ai_input_df = (
+        expected_tables_df
+        .join(candidates_by_table, ["catalog", "schema", "table"], "left")
+        .withColumn("candidates_json", F.coalesce(F.col("candidates_json"), F.lit("[]")))
+        .withColumn(
+            "prompt",
+            F.concat(
+                F.lit("""You are a senior data architect reviewing candidate Business Keys.
+
+Select the most likely Business Key using only the supplied candidate metadata.
+
+Rules:
+1. Prefer the smallest stable key.
+2. Prefer a source-system identifier such as customer_id, order_id, product_id, seller_id, or payment_id.
+3. Never select ingestion metadata.
+4. Reject mutable attributes such as email, address, name, points, income, status, login timestamp, and purchase timestamp.
+5. A technically unique value is not necessarily a Business Key.
+6. For an orders table, prefer order_id over customer_id.
+7. Use a composite key only when no smaller candidate identifies the entity.
+8. One snapshot does not prove long-term stability; mention this as a warning.
+9. Select only columns present in the candidate list. Never invent a column or combination.
+10. If no suitable candidate exists, return an empty recommended_columns array and decision NEEDS_REVIEW.
+
+Table: """),
+                F.col("catalog"), F.lit("."), F.col("schema"), F.lit("."), F.col("table"),
+                F.lit("\n\nCandidates:\n"), F.col("candidates_json"),
+            ),
+        )
+    )
+
+    endpoint_literal = "'" + ai_model_endpoint.replace("'", "''") + "'"
+    ai_response_format = (
+        "STRUCT<recommended_columns:ARRAY<STRING>,decision:STRING,"
+        "confidence:STRING,explanation:STRING,warnings:ARRAY<STRING>>"
+    )
+
+    ai_scored_df = ai_input_df.withColumn(
+        "ai_query_result",
+        F.expr(f"""
+            ai_query(
+                {endpoint_literal},
+                prompt,
+                responseFormat => '{ai_response_format}',
+                failOnError => false,
+                modelParameters => named_struct('temperature', 0.0)
+            )
+        """),
+    )
+
+    final_bk_df = (
+        ai_scored_df
+        .select(
+            F.lit(analysis_id).alias("analysis_id"),
+            F.lit(analyzed_at).alias("analyzed_at"),
+            "catalog", "schema", "table",
+            F.col("ai_query_result.response.recommended_columns").alias("recommended_bk"),
+            F.col("ai_query_result.response.decision").alias("ai_decision"),
+            F.col("ai_query_result.response.confidence").alias("confidence"),
+            F.col("ai_query_result.response.explanation").alias("explanation"),
+            F.col("ai_query_result.response.warnings").alias("warnings"),
+            F.col("ai_query_result.errorMessage").alias("ai_error"),
+        )
+        .withColumn(
+            "status",
+            F.when(F.col("ai_error").isNotNull(), F.lit("AI_ERROR"))
+            .when(
+                F.coalesce(F.size("recommended_bk"), F.lit(0)) == 0,
+                F.lit("NEEDS_REVIEW"),
+            )
+            .otherwise(F.lit("AI_RECOMMENDED")),
+        )
+        .orderBy("table")
+        .cache()
+    )
+
+    # Materialize once so display and optional persistence do not call the
+    # serving endpoint more than once for the same table.
+    final_bk_df.count()
+    display(final_bk_df)
+
+    if persist_ai_results:
+        ai_target_parts = ai_results_table.split(".")
+        if len(ai_target_parts) != 3:
+            raise ValueError("ai_results_table must use catalog.schema.table format")
+        spark.sql(
+            f"CREATE SCHEMA IF NOT EXISTS "
+            f"{quote_identifier(ai_target_parts[0])}.{quote_identifier(ai_target_parts[1])}"
+        )
+        quoted_ai_results_table = ".".join(quote_identifier(part) for part in ai_target_parts)
+        (
+            final_bk_df.write.format("delta")
+            .mode("append")
+            .option("mergeSchema", "true")
+            .saveAsTable(quoted_ai_results_table)
+        )
+        print(f"AI recommendations appended to {ai_results_table}")
+else:
+    print("AI interpretation disabled. Set use_ai_interpretation=true to enable it.")
 

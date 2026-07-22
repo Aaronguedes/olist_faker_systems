@@ -82,6 +82,10 @@ lakehouse.bronze.loyalty_customers
 | `latest_snapshot_only` | `true` | Analisa a unicidade no snapshot mais recente. |
 | `persist_results` | `false` | Define se o resultado será gravado em Delta. |
 | `results_table` | `lakehouse.metadata.business_key_candidates` | Tabela de destino das sugestões persistidas. |
+| `use_ai_interpretation` | `true` | Executa uma interpretação final com `ai_query()`, uma vez por tabela. |
+| `ai_model_endpoint` | `databricks-gpt-5-mini` | Endpoint de Model Serving usado pelo `ai_query()`. |
+| `persist_ai_results` | `false` | Grava as recomendações da IA em uma tabela Delta. |
+| `ai_results_table` | `lakehouse.metadata.business_key_recommendations` | Destino opcional das recomendações da IA. |
 
 ### Exemplo: analisar somente ERP
 
@@ -329,6 +333,62 @@ FROM lakehouse.metadata.business_key_candidates
 WHERE analysis_id = '56d681da-36d5-4e18-99f6-012ab50df17c'
 ORDER BY table, rank;
 ```
+
+## Interpretação final com `ai_query()`
+
+Quando `use_ai_interpretation=true`, o notebook agrupa todas as candidatas de uma tabela e envia apenas metadados para o modelo. Valores reais de CPF, e-mail, nome ou outros atributos não são enviados.
+
+É feita uma chamada por tabela. A IA recebe:
+
+- nomes das colunas candidatas;
+- unicidade e nulos;
+- estabilidade entre snapshots;
+- classificação, score e justificativa determinística.
+
+O prompt instrui o modelo a favorecer identificadores locais, rejeitar atributos mutáveis, não inventar colunas e retornar `NEEDS_REVIEW` quando não houver candidata adequada.
+
+A saída final é `final_bk_df`:
+
+| Coluna | Exemplo | Finalidade |
+|---|---|---|
+| `recommended_bk` | `["order_id"]` | BK recomendada pela IA. |
+| `ai_decision` | `RECOMMENDED` | Decisão estruturada retornada pelo modelo. |
+| `confidence` | `HIGH` | Confiança qualitativa, não uma probabilidade calibrada. |
+| `explanation` | `order_id is the source order identifier...` | Justificativa da seleção. |
+| `warnings` | `["Only one snapshot was available"]` | Riscos que exigem revisão. |
+| `ai_error` | `null` | Erro retornado pelo endpoint sem interromper outras tabelas. |
+| `status` | `AI_RECOMMENDED` | Estado de governança produzido pelo notebook. |
+
+Tabelas sem candidatas também são enviadas com uma lista vazia. Nesse caso, o modelo deve retornar:
+
+```text
+recommended_bk = []
+status = NEEDS_REVIEW
+```
+
+Para persistir:
+
+```text
+persist_ai_results = true
+ai_results_table = lakehouse.metadata.business_key_recommendations
+```
+
+O fluxo recomendado continua exigindo confirmação humana:
+
+```text
+SUGGESTED -> AI_RECOMMENDED -> HUMAN_CONFIRMED
+```
+
+Nunca crie automaticamente Hubs do Data Vault usando apenas `AI_RECOMMENDED`.
+
+### Requisitos do Databricks
+
+- endpoint de Model Serving disponível no workspace;
+- permissão para consultar o endpoint;
+- compute Serverless e runtime compatível com `ai_query()` e structured output;
+- região com suporte ao Model Serving utilizado.
+
+O endpoint pode ser substituído pelo widget `ai_model_endpoint` sem alterar o código.
 
 ### Consultar somente sugestões fortes
 
