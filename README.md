@@ -2,7 +2,7 @@
 
 Projeto de engenharia de dados que utiliza o dataset público Olist como referência para gerar dados sintéticos de clientes em múltiplos sistemas empresariais. O objetivo é criar uma fonte realista para estudos de ingestão incremental, qualidade de dados, integração de identidades e modelagem Data Vault em Databricks.
 
-Os mesmos clientes recebem representações diferentes em CRM, ERP, e-commerce e fidelidade. Isso permite testar resolução de identidade, historização, regras de negócio e relacionamentos entre fontes independentes.
+Os mesmos clientes recebem representações diferentes em CRM, ERP, e-commerce e fidelidade. Cada dataset publicado expõe somente a chave local do respectivo sistema; a chave interna `customer_unique_id` permanece restrita ao simulador. Isso permite testar resolução de identidade, historização, regras de negócio e relacionamentos entre fontes independentes.
 
 ## Fluxo do projeto
 
@@ -83,11 +83,11 @@ Tipos são apresentados como tipos lógicos recomendados. Como os notebooks usam
 ### CRM Customers
 
 **Grão:** um registro por cliente no CRM.  
-**Chaves:** `crm_customer_id` (PK), `customer_unique_id` (BK).
+**Chave publicada:** `crm_customer_id` (PK/BK da fonte).
 
 | Grupo | Campos | Descrição |
 |---|---|---|
-| Identificação | `crm_customer_id`, `customer_unique_id`, `cpf` | Identificadores do CRM, chave de integração e documento. |
+| Identificação | `crm_customer_id`, `cpf` | Identificador do CRM e documento usado no matching. |
 | Nome | `first_name`, `middle_name`, `last_name`, `full_name` | Componentes e apresentação do nome. |
 | Perfil | `birth_date`, `gender`, `marital_status`, `profession`, `annual_income` | Informações demográficas e profissionais. |
 | Contato | `email`, `phone`, `street`, `city`, `state` | Dados sujeitos a mudanças e problemas de qualidade. |
@@ -102,12 +102,11 @@ Domínios principais:
 ### ERP Customers
 
 **Grão:** um registro por cliente no ERP.  
-**Chaves:** `erp_customer_id` (PK), `customer_unique_id` (BK).
+**Chave publicada:** `erp_customer_id` (PK/BK da fonte).
 
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `erp_customer_id` | string | Identificador do cliente no ERP. |
-| `customer_unique_id` | string | Chave de correlação entre sistemas. |
 | `customer_name` | string | Nome com possível variação de apresentação. |
 | `cpf` | string | CPF sintético. |
 | `tax_category` | string | `Normal`, `Simples` ou `MEI`. |
@@ -131,7 +130,7 @@ Domínios principais:
 |---|---|---|
 | `order_id` | string/UUID | Identificador do pedido. |
 | `customer_id` | string | Identificador Olist presente no snapshot inicial. |
-| `customer_unique_id` | string | Chave do cliente usada no incremental. |
+| `erp_customer_id` | string | Cliente ERP relacionado ao pedido incremental. |
 | `order_status` | string | Status do pedido. |
 | `order_purchase_timestamp` | timestamp | Data/hora da compra. |
 | `order_approved_at` | timestamp | Aprovação; presente no snapshot Olist. |
@@ -156,11 +155,11 @@ Domínios principais:
 ### Ecommerce Customers
 
 **Grão:** uma conta por cliente.  
-**Chaves:** `ecommerce_customer_id` (PK), `customer_unique_id` (BK).
+**Chave publicada:** `ecommerce_customer_id` (PK/BK da fonte).
 
 | Grupo | Campos | Descrição |
 |---|---|---|
-| Identidade | `ecommerce_customer_id`, `customer_unique_id`, `username`, `display_name` | Conta e identificação do cliente. |
+| Identidade | `ecommerce_customer_id`, `username`, `display_name` | Conta e identificação do cliente. |
 | Contato | `email_address`, `phone_number` | Dados de contato na plataforma. |
 | Tecnologia | `browser`, `operating_system`, `device`, `last_login` | Contexto de acesso mais recente. |
 | Preferências | `marketing_source`, `preferred_language`, `newsletter_optin`, `preferred_category` | Aquisição, consentimento e preferências. |
@@ -196,12 +195,11 @@ Domínios principais:
 ### Loyalty Customers
 
 **Grão:** uma associação por cliente.  
-**Chaves:** `loyalty_customer_id` (PK), `customer_unique_id` (BK).
+**Chave publicada:** `loyalty_customer_id` (PK/BK da fonte).
 
 | Campo | Tipo | Descrição |
 |---|---|---|
 | `loyalty_customer_id` | string | Identificador no programa. |
-| `customer_unique_id` | string | Chave de correlação entre sistemas. |
 | `member_name` | string | Nome apresentado no programa. |
 | `join_date` | date/timestamp | Data de adesão. |
 | `points` | integer | Pontos acumulados. |
@@ -233,6 +231,8 @@ Domínios principais:
 - A carga inicial grava snapshots completos na landing.
 - O Notebook 2 grava apenas clientes alterados e novas transações na partição diária.
 - O diretório de estado mantém a visão completa após a aplicação dos eventos e não deve ser confundido com a landing consumida pelo pipeline.
-- `customer_unique_id` é a principal Business Key para integração e modelagem Data Vault.
+- `customer_unique_id` existe somente no estado interno do simulador e não é publicado na landing.
+- Cada fonte usa seu próprio ID como Business Key: `crm_customer_id`, `erp_customer_id`, `ecommerce_customer_id` ou `loyalty_customer_id`.
+- A associação global deve ser resolvida por atributos como CPF, e-mail, telefone e nome/data de nascimento, registrando método e confiança do match.
 
 Para uma ingestão mais robusta, recomenda-se adicionar a todos os datasets os metadados `load_datetime`, `record_source`, `batch_id` e `operation_type` (`I`, `U`, `D`). Também é recomendável alinhar explicitamente os schemas de Orders, Payments e novos clientes entre snapshot e incremental.
