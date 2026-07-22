@@ -53,3 +53,24 @@ Set the `persist_results` widget to `true` to append results to the Delta table 
 
 The notebook first profiles simple candidates together, screens combinations with approximate cardinality, confirms shortlisted candidates with exact counts, and calculates snapshot stability only for finalists. Approximate values are never published as final metrics.
 
+## AI recommendation output
+
+When `use_ai_interpretation=true`, the notebook also creates `final_bk_df`.
+
+| Column | Type | Description | Example |
+|---|---|---|---|
+| `analysis_id` | string/UUID | Links the AI recommendation to the profiling execution. | `56d681da-36d5-4e18-99f6-012ab50df17c` |
+| `analyzed_at` | timestamp | UTC start time of the profiling execution. | `2026-07-22 23:30:13` |
+| `catalog` | string | Source Unity Catalog catalog. | `lakehouse` |
+| `schema` | string | Source schema. | `bronze` |
+| `table` | string | Source table interpreted by the model. | `erp_orders` |
+| `recommended_bk` | array<string> | Candidate columns recommended by the model. Empty when review is required. | `["order_id"]` |
+| `ai_decision` | string | Structured model decision, normally `RECOMMENDED` or `NEEDS_REVIEW`. | `RECOMMENDED` |
+| `confidence` | string | Qualitative model confidence; it is not a calibrated probability. | `HIGH` |
+| `explanation` | string | Semantic justification for the recommendation. | `order_id is the source order identifier.` |
+| `warnings` | array<string> | Limitations detected by the model. | `["Only one snapshot was available"]` |
+| `ai_error` | string | Endpoint error captured with `failOnError=false`; null on success. | `null` |
+| `status` | string | Notebook governance status: `AI_RECOMMENDED`, `NEEDS_REVIEW`, or `AI_ERROR`. | `AI_RECOMMENDED` |
+
+Only candidate metadata is sent to `ai_query()`. Source records and PII values are not included in the request.
+
