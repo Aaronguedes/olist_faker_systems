@@ -1,0 +1,94 @@
+resources:
+  jobs:
+    bronze_ingestion:
+      name: ${bundle.name}-bronze-${bundle.target}
+      max_concurrent_runs: 1
+      parameters:
+        - name: landing_root
+          default: ${var.landing_root}
+        - name: checkpoint_root
+          default: ${var.checkpoint_root}
+        - name: bronze_catalog
+          default: ${var.bronze_catalog}
+        - name: bronze_schema
+          default: ${var.bronze_schema}
+        - name: include_existing_files
+          default: "true"
+
+      tasks:
+        - task_key: crm_customers
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task: &bronze_notebook
+            notebook_path: ${workspace.file_path}/ingestion/03_bronze_autoloader_base.py
+            base_parameters: &common_parameters
+              source_system: crm
+              entity: customers
+              landing_root: "{{job.parameters.landing_root}}"
+              checkpoint_root: "{{job.parameters.checkpoint_root}}"
+              bronze_catalog: "{{job.parameters.bronze_catalog}}"
+              bronze_schema: "{{job.parameters.bronze_schema}}"
+              include_existing_files: "{{job.parameters.include_existing_files}}"
+
+        - task_key: erp_customers
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *bronze_notebook
+            base_parameters:
+              <<: *common_parameters
+              source_system: erp
+              entity: customers
+
+        - task_key: erp_orders
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *bronze_notebook
+            base_parameters:
+              <<: *common_parameters
+              source_system: erp
+              entity: orders
+
+        - task_key: erp_payments
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *bronze_notebook
+            base_parameters:
+              <<: *common_parameters
+              source_system: erp
+              entity: payments
+
+        - task_key: ecommerce_customers
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *bronze_notebook
+            base_parameters:
+              <<: *common_parameters
+              source_system: ecommerce
+              entity: customers
+
+        - task_key: ecommerce_products
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *bronze_notebook
+            base_parameters:
+              <<: *common_parameters
+              source_system: ecommerce
+              entity: products
+
+        - task_key: ecommerce_sellers
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *bronze_notebook
+            base_parameters:
+              <<: *common_parameters
+              source_system: ecommerce
+              entity: sellers
+
+        - task_key: loyalty_customers
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *bronze_notebook
+            base_parameters:
+              <<: *common_parameters
+              source_system: loyalty
+              entity: customers
+
