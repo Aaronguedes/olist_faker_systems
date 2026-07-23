@@ -24,7 +24,7 @@ DEFAULTS = {
     "persist_results": "false",
     "results_table": "lakehouse.metadata.business_key_candidates",
     "use_ai_interpretation": "true",
-    "ai_model_endpoint": "databricks-gpt-5-mini",
+    "ai_model_endpoint": "databricks-gpt-oss-20b",
     "persist_ai_results": "false",
     "ai_results_table": "lakehouse.metadata.business_key_recommendations",
 }
@@ -429,18 +429,49 @@ Table: """),
         "decision:STRING,confidence:STRING,explanation:STRING,"
         "warnings:ARRAY<STRING>>>"
     )
+    # Azure Databricks requires one top-level field in responseFormat, but the
+    # successful `result` JSON contains the value of that field (without the
+    # bk_recommendation wrapper). Use a separate schema for the JSON payload.
+    ai_result_schema = (
+        "STRUCT<recommended_columns:ARRAY<STRING>,decision:STRING,"
+        "confidence:STRING,explanation:STRING,warnings:ARRAY<STRING>>"
+    )
 
-    ai_scored_df = ai_input_df.withColumn(
-        "ai_query_result",
-        F.expr(f"""
-            ai_query(
-                {endpoint_literal},
-                prompt,
-                responseFormat => '{ai_response_format}',
-                failOnError => false,
-                modelParameters => named_struct('temperature', 0.0)
-            )
-        """),
+    ai_scored_df = (
+        ai_input_df
+        .withColumn(
+            "ai_query_result",
+            F.expr(f"""
+                ai_query(
+                    {endpoint_literal},
+                    prompt,
+                    responseFormat => '{ai_response_format}',
+                    failOnError => false,
+                    modelParameters => named_struct('temperature', 0.0)
+                )
+            """),
+        )
+        # With failOnError=false, this Azure runtime exposes the successful
+        # structured response as a JSON string in result. Parse it explicitly.
+        .withColumn(
+            "parsed_ai_result",
+            F.from_json(F.col("ai_query_result.result"), ai_result_schema),
+        )
+        .withColumn(
+            "ai_parse_error",
+            F.when(
+                F.col("ai_query_result.result").isNotNull()
+                & (
+                    F.col("parsed_ai_result").isNull()
+                    | F.col("parsed_ai_result.decision").isNull()
+                    | F.col("parsed_ai_result.recommended_columns").isNull()
+                ),
+                F.concat(
+                    F.lit("Unexpected AI result JSON: "),
+                    F.col("ai_query_result.result"),
+                ),
+            ),
+        )
     )
 
     final_bk_df = (
@@ -449,12 +480,15 @@ Table: """),
             F.lit(analysis_id).alias("analysis_id"),
             F.lit(analyzed_at).alias("analyzed_at"),
             "catalog", "schema", "table",
-            F.col("ai_query_result.response.bk_recommendation.recommended_columns").alias("recommended_bk"),
-            F.col("ai_query_result.response.bk_recommendation.decision").alias("ai_decision"),
-            F.col("ai_query_result.response.bk_recommendation.confidence").alias("confidence"),
-            F.col("ai_query_result.response.bk_recommendation.explanation").alias("explanation"),
-            F.col("ai_query_result.response.bk_recommendation.warnings").alias("warnings"),
-            F.col("ai_query_result.errorMessage").alias("ai_error"),
+            F.col("parsed_ai_result.recommended_columns").alias("recommended_bk"),
+            F.col("parsed_ai_result.decision").alias("ai_decision"),
+            F.col("parsed_ai_result.confidence").alias("confidence"),
+            F.col("parsed_ai_result.explanation").alias("explanation"),
+            F.col("parsed_ai_result.warnings").alias("warnings"),
+            F.coalesce(
+                F.col("ai_query_result.errorMessage"),
+                F.col("ai_parse_error"),
+            ).alias("ai_error"),
         )
         .withColumn(
             "status",
@@ -466,7 +500,6 @@ Table: """),
             .otherwise(F.lit("AI_RECOMMENDED")),
         )
         .orderBy("table")
-        .cache()
     )
 
     # Materialize once so display and optional persistence do not call the
@@ -493,3 +526,20 @@ Table: """),
 else:
     print("AI interpretation disabled. Set use_ai_interpretation=true to enable it.")
 
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT * FROM lakehouse.bronze.erp_payments
+
+# COMMAND ----------
+
+# MAGIC %sql
+# MAGIC SELECT
+# MAGIC     COUNT(*),
+# MAGIC     order_id, 
+# MAGIC     payment_sequential
+# MAGIC FROM lakehouse.bronze.erp_payments
+# MAGIC GROUP BY ALL
+# MAGIC HAVING COUNT(*) > 1
+# MAGIC ORDER BY COUNT(*) DESC
