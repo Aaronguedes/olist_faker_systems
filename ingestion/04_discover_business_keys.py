@@ -430,17 +430,34 @@ Table: """),
         "warnings:ARRAY<STRING>>>"
     )
 
-    ai_scored_df = ai_input_df.withColumn(
-        "ai_query_result",
-        F.expr(f"""
-            ai_query(
-                {endpoint_literal},
-                prompt,
-                responseFormat => '{ai_response_format}',
-                failOnError => false,
-                modelParameters => named_struct('temperature', 0.0)
-            )
-        """),
+    ai_scored_df = (
+        ai_input_df
+        .withColumn(
+            "ai_query_result",
+            F.expr(f"""
+                ai_query(
+                    {endpoint_literal},
+                    prompt,
+                    responseFormat => '{ai_response_format}',
+                    failOnError => false,
+                    modelParameters => named_struct('temperature', 0.0)
+                )
+            """),
+        )
+        # With failOnError=false, this Azure runtime exposes the successful
+        # structured response as a JSON string in result. Parse it explicitly.
+        .withColumn(
+            "parsed_ai_result",
+            F.from_json(F.col("ai_query_result.result"), ai_response_format),
+        )
+        .withColumn(
+            "ai_parse_error",
+            F.when(
+                F.col("ai_query_result.result").isNotNull()
+                & F.col("parsed_ai_result").isNull(),
+                F.lit("AI result was not valid JSON for the configured response schema"),
+            ),
+        )
     )
 
     final_bk_df = (
@@ -449,12 +466,15 @@ Table: """),
             F.lit(analysis_id).alias("analysis_id"),
             F.lit(analyzed_at).alias("analyzed_at"),
             "catalog", "schema", "table",
-            F.col("ai_query_result.result.bk_recommendation.recommended_columns").alias("recommended_bk"),
-            F.col("ai_query_result.result.bk_recommendation.decision").alias("ai_decision"),
-            F.col("ai_query_result.result.bk_recommendation.confidence").alias("confidence"),
-            F.col("ai_query_result.result.bk_recommendation.explanation").alias("explanation"),
-            F.col("ai_query_result.result.bk_recommendation.warnings").alias("warnings"),
-            F.col("ai_query_result.errorMessage").alias("ai_error"),
+            F.col("parsed_ai_result.bk_recommendation.recommended_columns").alias("recommended_bk"),
+            F.col("parsed_ai_result.bk_recommendation.decision").alias("ai_decision"),
+            F.col("parsed_ai_result.bk_recommendation.confidence").alias("confidence"),
+            F.col("parsed_ai_result.bk_recommendation.explanation").alias("explanation"),
+            F.col("parsed_ai_result.bk_recommendation.warnings").alias("warnings"),
+            F.coalesce(
+                F.col("ai_query_result.errorMessage"),
+                F.col("ai_parse_error"),
+            ).alias("ai_error"),
         )
         .withColumn(
             "status",
