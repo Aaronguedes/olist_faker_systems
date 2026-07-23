@@ -57,7 +57,7 @@ The notebook first profiles simple candidates together, screens combinations wit
 
 When `use_ai_interpretation=true`, the notebook also creates `final_bk_df`.
 
-The Azure Databricks DDL response schema wraps the recommendation in one required top-level field named `bk_recommendation`. The notebook flattens that nested field into the columns documented below.
+The Azure Databricks DDL response schema wraps the recommendation in one required top-level field named `bk_recommendation`. With `failOnError=false`, the runtime returns `result` and `errorMessage`, so the notebook flattens `result.bk_recommendation` into the columns documented below.
 
 | Column | Type | Description | Example |
 |---|---|---|---|
