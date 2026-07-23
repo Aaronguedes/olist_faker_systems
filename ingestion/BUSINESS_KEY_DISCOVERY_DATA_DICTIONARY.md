@@ -1,4 +1,4 @@
-# Business Key Discovery — Data Dictionary
+# Business Key Discovery â€” Data Dictionary
 
 This document describes the output of `04_discover_business_keys.py`. The notebook suggests candidates; it does not replace business confirmation.
 
@@ -21,7 +21,7 @@ This document describes the output of `04_discover_business_keys.py`. The notebo
 | `snapshot_count` | integer | Number of non-null `_source_date` snapshots used in the stability test. | `3` |
 | `stability_ratio` | double | Fraction of snapshots where the candidate meets the configured uniqueness threshold and has no nulls. | `1.0` |
 | `classification` | string | `STRONG` for perfectly unique and stable candidates, `REVIEW` for near-unique candidates, otherwise `WEAK`. | `STRONG` |
-| `score` | double | Ranking heuristic: uniqueness points + up to 20 stability points + name bonus − key-size penalty. It is not a probability. | `120.0` |
+| `score` | double | Ranking heuristic: uniqueness points + up to 20 stability points + name bonus âˆ’ key-size penalty. It is not a probability. | `120.0` |
 | `reason` | string | Human-readable evidence supporting the recommendation. | `100.0000% unique; 0 null rows; valid in 100.0% of 3 snapshots; identifier-like column name; composite key with 2 columns` |
 
 ## Score formula
@@ -57,7 +57,7 @@ The notebook first profiles simple candidates together, screens combinations wit
 
 When `use_ai_interpretation=true`, the notebook also creates `final_bk_df`.
 
-The Azure Databricks DDL response schema wraps the recommendation in one required top-level field named `bk_recommendation`. The notebook flattens that nested field into the columns documented below.
+The Azure Databricks DDL response schema requires one top-level field named `bk_recommendation`. With `failOnError=false`, this runtime returns the successful `result` as a JSON string containing the inner recommendation fields directly, without that wrapper. The notebook therefore keeps the wrapper in `responseFormat`, parses `result` with a separate flat `ai_result_schema`, and maps `parsed_ai_result` into the columns documented below.
 
 | Column | Type | Description | Example |
 |---|---|---|---|
