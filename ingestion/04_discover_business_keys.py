@@ -429,6 +429,13 @@ Table: """),
         "decision:STRING,confidence:STRING,explanation:STRING,"
         "warnings:ARRAY<STRING>>>"
     )
+    # Azure Databricks requires one top-level field in responseFormat, but the
+    # successful `result` JSON contains the value of that field (without the
+    # bk_recommendation wrapper). Use a separate schema for the JSON payload.
+    ai_result_schema = (
+        "STRUCT<recommended_columns:ARRAY<STRING>,decision:STRING,"
+        "confidence:STRING,explanation:STRING,warnings:ARRAY<STRING>>"
+    )
 
     ai_scored_df = (
         ai_input_df
@@ -448,14 +455,21 @@ Table: """),
         # structured response as a JSON string in result. Parse it explicitly.
         .withColumn(
             "parsed_ai_result",
-            F.from_json(F.col("ai_query_result.result"), ai_response_format),
+            F.from_json(F.col("ai_query_result.result"), ai_result_schema),
         )
         .withColumn(
             "ai_parse_error",
             F.when(
                 F.col("ai_query_result.result").isNotNull()
-                & F.col("parsed_ai_result").isNull(),
-                F.lit("AI result was not valid JSON for the configured response schema"),
+                & (
+                    F.col("parsed_ai_result").isNull()
+                    | F.col("parsed_ai_result.decision").isNull()
+                    | F.col("parsed_ai_result.recommended_columns").isNull()
+                ),
+                F.concat(
+                    F.lit("Unexpected AI result JSON: "),
+                    F.col("ai_query_result.result"),
+                ),
             ),
         )
     )
@@ -466,11 +480,11 @@ Table: """),
             F.lit(analysis_id).alias("analysis_id"),
             F.lit(analyzed_at).alias("analyzed_at"),
             "catalog", "schema", "table",
-            F.col("parsed_ai_result.bk_recommendation.recommended_columns").alias("recommended_bk"),
-            F.col("parsed_ai_result.bk_recommendation.decision").alias("ai_decision"),
-            F.col("parsed_ai_result.bk_recommendation.confidence").alias("confidence"),
-            F.col("parsed_ai_result.bk_recommendation.explanation").alias("explanation"),
-            F.col("parsed_ai_result.bk_recommendation.warnings").alias("warnings"),
+            F.col("parsed_ai_result.recommended_columns").alias("recommended_bk"),
+            F.col("parsed_ai_result.decision").alias("ai_decision"),
+            F.col("parsed_ai_result.confidence").alias("confidence"),
+            F.col("parsed_ai_result.explanation").alias("explanation"),
+            F.col("parsed_ai_result.warnings").alias("warnings"),
             F.coalesce(
                 F.col("ai_query_result.errorMessage"),
                 F.col("ai_parse_error"),
