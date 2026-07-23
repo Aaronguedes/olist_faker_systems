@@ -359,7 +359,7 @@ STRUCT<bk_recommendation:STRUCT<
 >>
 ```
 
-Com `failOnError=false`, o Azure Databricks Runtime utilizado pelo projeto retorna um struct com os campos `result` e `errorMessage`. Nesse runtime, `result` Ã© uma string JSON. O notebook aplica `from_json(result, ai_response_format)` e acessa os valores em `parsed_ai_result.bk_recommendation`. Erros do endpoint ficam em `ai_query_result.errorMessage`; falhas de parsing sÃ£o registradas em `ai_parse_error`.
+Com `failOnError=false`, o Azure Databricks Runtime utilizado pelo projeto retorna um struct com os campos `result` e `errorMessage`. Nesse runtime, `result` Ã© uma string JSON contendo diretamente os campos internos (`recommended_columns`, `decision`, `confidence`, `explanation` e `warnings`), sem o wrapper `bk_recommendation`. O notebook mantÃ©m o wrapper no `responseFormat`, onde ele Ã© obrigatÃ³rio, mas aplica `from_json(result, ai_result_schema)` usando um schema plano. Erros do endpoint ficam em `ai_query_result.errorMessage`; formatos inesperados sÃ£o registrados em `ai_parse_error`.
 
 A saÃ­da final Ã© `final_bk_df`:
 
