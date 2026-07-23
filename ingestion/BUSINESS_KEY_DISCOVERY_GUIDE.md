@@ -359,7 +359,7 @@ STRUCT<bk_recommendation:STRUCT<
 >>
 ```
 
-Com `failOnError=false`, os valores são acessados abaixo de `ai_query_result.response.bk_recommendation`, enquanto erros do endpoint ficam em `ai_query_result.errorMessage`.
+Com `failOnError=false`, o Azure Databricks Runtime utilizado pelo projeto retorna um struct com os campos `result` e `errorMessage`. Os valores são acessados abaixo de `ai_query_result.result.bk_recommendation`, enquanto erros do endpoint ficam em `ai_query_result.errorMessage`.
 
 A saída final é `final_bk_df`:
 
