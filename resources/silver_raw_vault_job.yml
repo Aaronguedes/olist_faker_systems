@@ -8,7 +8,7 @@ resources:
         - task_key: load_raw_vault
           existing_cluster_id: ${var.existing_cluster_id}
           notebook_task:
-            notebook_path: ${workspace.file_path}/ingestion/05_silver_raw_vault.py
+            notebook_path: ${workspace.file_path}/silver/05_silver_raw_vault.py
             base_parameters:
               bronze_catalog: ${var.bronze_catalog}
               bronze_schema: ${var.bronze_schema}
