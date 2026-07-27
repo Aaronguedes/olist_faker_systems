@@ -47,7 +47,7 @@ Score, classificação e justificativa
 
 ## Como executar
 
-1. Abra `ingestion/04_discover_business_keys.py` no Databricks.
+1. Abra `bronze/04_discover_business_keys.py` no Databricks.
 2. Anexe o notebook a um compute com acesso ao Unity Catalog.
 3. Confirme os widgets no topo do notebook.
 4. Execute todas as células.
