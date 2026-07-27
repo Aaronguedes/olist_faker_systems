@@ -1,8 +1,24 @@
 # Silver Raw Data Vault
 
 The Silver layer converts the eight Bronze datasets into an insert-only Raw
-Data Vault. Run `05_silver_raw_vault.py` directly or deploy the
-`silver_raw_vault` Databricks Asset Bundle job.
+Data Vault. Deploy the `silver_raw_vault` Databricks Asset Bundle job. The job
+runs one independent task per Data Vault object while reusing four notebooks.
+
+## Notebook organization
+
+| File | Responsibility |
+|---|---|
+| `01_load_hub.py` | Reusable Hub loader |
+| `02_load_link.py` | Reusable business Link loader |
+| `03_load_satellite.py` | Reusable Satellite loader |
+| `04_load_same_as_link.py` | Customer identity-resolution Link |
+| `raw_vault.py` | Shared hashing, Delta merge and history logic |
+| `raw_vault_config.py` | Object-to-source metadata |
+
+The bundle creates four Hub tasks, two Link tasks, eight Satellite tasks and one
+Same-As task. Relative notebook paths start with `../silver/` because the path
+is resolved from `resources/silver_raw_vault_job.yml`; this points to the same
+Silver folder that is `./silver/` from the bundle root.
 
 ## Objects
 
@@ -64,7 +80,7 @@ without representing the same identity.
 - Hubs and Links use insert-only Delta `MERGE`.
 - Satellites recreate the source sequence using the Bronze `_ingested_at`
   timestamp and retain only rows whose hashdiff changed.
-- Re-running the notebook is idempotent.
+- Re-running any object task is idempotent.
 - The Same-As Link uses only exact CPF or exact e-mail matches. Names are not
   used because they are not reliable identity evidence. Exact matches receive
   `match_score = 1.0` and `match_status = AUTO_MATCHED`.
@@ -76,9 +92,9 @@ without representing the same identity.
 
 | Parameter | Default | Description |
 |---|---|---|
-| `bronze_catalog` | `poc` | Source Unity Catalog catalog |
+| `bronze_catalog` | `lakehouse` | Source Unity Catalog catalog |
 | `bronze_schema` | `bronze` | Source schema |
-| `silver_catalog` | `poc` | Target Unity Catalog catalog |
+| `silver_catalog` | `lakehouse` | Target Unity Catalog catalog |
 | `silver_schema` | `silver` | Target schema |
 
 Deploy and run:
