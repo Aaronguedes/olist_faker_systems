@@ -1,0 +1,18 @@
+resources:
+  jobs:
+    silver_raw_vault:
+      name: ${bundle.name}-silver-raw-vault-${bundle.target}
+      max_concurrent_runs: 1
+
+      tasks:
+        - task_key: load_raw_vault
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            notebook_path: ../silver/05_silver_raw_vault.py
+            base_parameters:
+              bronze_catalog: ${var.bronze_catalog}
+              bronze_schema: ${var.bronze_schema}
+              silver_catalog: ${var.silver_catalog}
+              silver_schema: ${var.silver_schema}
+
+
