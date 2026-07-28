@@ -17,7 +17,6 @@ resources:
 
       tasks:
         - task_key: crm_customers
-          existing_cluster_id: ${var.existing_cluster_id}
           notebook_task: &bronze_notebook
             notebook_path: ../bronze/03_bronze_autoloader_base.py
             base_parameters: &common_parameters
@@ -30,7 +29,6 @@ resources:
               include_existing_files: "{{job.parameters.include_existing_files}}"
 
         - task_key: erp_customers
-          existing_cluster_id: ${var.existing_cluster_id}
           notebook_task:
             <<: *bronze_notebook
             base_parameters:
@@ -39,7 +37,6 @@ resources:
               entity: customers
 
         - task_key: erp_orders
-          existing_cluster_id: ${var.existing_cluster_id}
           notebook_task:
             <<: *bronze_notebook
             base_parameters:
@@ -48,7 +45,6 @@ resources:
               entity: orders
 
         - task_key: erp_payments
-          existing_cluster_id: ${var.existing_cluster_id}
           notebook_task:
             <<: *bronze_notebook
             base_parameters:
@@ -57,7 +53,6 @@ resources:
               entity: payments
 
         - task_key: ecommerce_customers
-          existing_cluster_id: ${var.existing_cluster_id}
           notebook_task:
             <<: *bronze_notebook
             base_parameters:
@@ -66,7 +61,6 @@ resources:
               entity: customers
 
         - task_key: ecommerce_products
-          existing_cluster_id: ${var.existing_cluster_id}
           notebook_task:
             <<: *bronze_notebook
             base_parameters:
@@ -75,7 +69,6 @@ resources:
               entity: products
 
         - task_key: ecommerce_sellers
-          existing_cluster_id: ${var.existing_cluster_id}
           notebook_task:
             <<: *bronze_notebook
             base_parameters:
@@ -84,7 +77,6 @@ resources:
               entity: sellers
 
         - task_key: loyalty_customers
-          existing_cluster_id: ${var.existing_cluster_id}
           notebook_task:
             <<: *bronze_notebook
             base_parameters:
