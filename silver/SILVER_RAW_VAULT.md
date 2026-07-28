@@ -1,5 +1,9 @@
 # Silver Raw Data Vault
 
+For a row-by-row example of the complete customer journey from Landing through
+Bronze, Hubs, Satellites, Same-As matching, and Customer-Order Links, see
+[Customer flow end to end](../docs/CUSTOMER_FLOW_END_TO_END.md).
+
 The Silver layer converts the eight Bronze datasets into an insert-only Raw
 Data Vault. Deploy the `silver_raw_vault` Databricks Asset Bundle job. The job
 runs one independent task per Data Vault object while reusing four notebooks.
