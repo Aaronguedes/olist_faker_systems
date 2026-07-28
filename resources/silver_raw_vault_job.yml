@@ -5,14 +5,151 @@ resources:
       max_concurrent_runs: 1
 
       tasks:
-        - task_key: load_raw_vault
+        - task_key: hub_customer
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task: &hub_notebook
+            notebook_path: ../silver/01_load_hub.py
+            base_parameters: &common_parameters
+              object_name: hub_customer
+              bronze_catalog: ${var.bronze_catalog}
+              bronze_schema: ${var.bronze_schema}
+              silver_catalog: ${var.silver_catalog}
+              silver_schema: ${var.silver_schema}
+
+        - task_key: hub_order
           existing_cluster_id: ${var.existing_cluster_id}
           notebook_task:
-            notebook_path: ../silver/05_silver_raw_vault.py
+            <<: *hub_notebook
+            base_parameters:
+              <<: *common_parameters
+              object_name: hub_order
+
+        - task_key: hub_product
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *hub_notebook
+            base_parameters:
+              <<: *common_parameters
+              object_name: hub_product
+
+        - task_key: hub_seller
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *hub_notebook
+            base_parameters:
+              <<: *common_parameters
+              object_name: hub_seller
+
+        - task_key: link_customer_order
+          depends_on:
+            - task_key: hub_customer
+            - task_key: hub_order
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task: &link_notebook
+            notebook_path: ../silver/02_load_link.py
+            base_parameters:
+              <<: *common_parameters
+              object_name: link_customer_order
+
+        - task_key: link_order_payment_occurrence
+          depends_on:
+            - task_key: hub_order
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *link_notebook
+            base_parameters:
+              <<: *common_parameters
+              object_name: link_order_payment_occurrence
+
+        - task_key: same_as_link_customer
+          depends_on:
+            - task_key: hub_customer
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            notebook_path: ../silver/04_load_same_as_link.py
             base_parameters:
               bronze_catalog: ${var.bronze_catalog}
               bronze_schema: ${var.bronze_schema}
               silver_catalog: ${var.silver_catalog}
               silver_schema: ${var.silver_schema}
 
+        - task_key: sat_customer_crm
+          depends_on:
+            - task_key: hub_customer
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task: &satellite_notebook
+            notebook_path: ../silver/03_load_satellite.py
+            base_parameters:
+              <<: *common_parameters
+              object_name: sat_customer_crm
+
+        - task_key: sat_customer_erp
+          depends_on:
+            - task_key: hub_customer
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *satellite_notebook
+            base_parameters:
+              <<: *common_parameters
+              object_name: sat_customer_erp
+
+        - task_key: sat_customer_ecommerce
+          depends_on:
+            - task_key: hub_customer
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *satellite_notebook
+            base_parameters:
+              <<: *common_parameters
+              object_name: sat_customer_ecommerce
+
+        - task_key: sat_customer_loyalty
+          depends_on:
+            - task_key: hub_customer
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *satellite_notebook
+            base_parameters:
+              <<: *common_parameters
+              object_name: sat_customer_loyalty
+
+        - task_key: sat_order_erp
+          depends_on:
+            - task_key: hub_order
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *satellite_notebook
+            base_parameters:
+              <<: *common_parameters
+              object_name: sat_order_erp
+
+        - task_key: sat_order_payment_erp
+          depends_on:
+            - task_key: link_order_payment_occurrence
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *satellite_notebook
+            base_parameters:
+              <<: *common_parameters
+              object_name: sat_order_payment_erp
+
+        - task_key: sat_product_ecommerce
+          depends_on:
+            - task_key: hub_product
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *satellite_notebook
+            base_parameters:
+              <<: *common_parameters
+              object_name: sat_product_ecommerce
+
+        - task_key: sat_seller_ecommerce
+          depends_on:
+            - task_key: hub_seller
+          existing_cluster_id: ${var.existing_cluster_id}
+          notebook_task:
+            <<: *satellite_notebook
+            base_parameters:
+              <<: *common_parameters
+              object_name: sat_seller_ecommerce
 
